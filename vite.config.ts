@@ -15,6 +15,7 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'https://location-be-zgoj.onrender.com',
+        // target: 'http://localhost:5005',
         changeOrigin: true,
       },
     },

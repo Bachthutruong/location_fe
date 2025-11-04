@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: 'https://location-be-zgoj.onrender.com/api',
+  // baseURL: 'http://localhost:5005/api',
   headers: {
     'Content-Type': 'application/json',
   },

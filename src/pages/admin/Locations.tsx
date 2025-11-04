@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Select } from '../../components/ui/select'
 import { Badge } from '../../components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import { CheckCircle, XCircle, Trash2, Eye, Plus } from 'lucide-react'
+import { CheckCircle, XCircle, Trash2, Eye, Plus, Download, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 // import { useTaiwanCities, useTaiwanDistricts } from '../../hooks/useTaiwanLocations'
 
@@ -55,6 +55,9 @@ const AdminLocations = () => {
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importing, setImporting] = useState(false)
 
   // Taiwan hooks not used on list page
 
@@ -135,6 +138,48 @@ const AdminLocations = () => {
     )
   }
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await api.get('/locations/import/template', { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'locations_template.xlsx')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || '下載模板失敗')
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importFile) {
+      toast.error('請選擇 Excel 檔案')
+      return
+    }
+    if (!importFile.name.toLowerCase().endsWith('.xlsx')) {
+      toast.error('只支援 Excel (.xlsx) 檔案')
+      return
+    }
+    try {
+      setImporting(true)
+      const form = new FormData()
+      form.append('file', importFile)
+      const res = await api.post('/locations/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const { imported, failed } = res.data || {}
+      if (imported > 0) toast.success(`已匯入 ${imported} 筆資料`)
+      if (failed > 0) toast.error(`有 ${failed} 筆失敗，請檢查檔案內容`)
+      setImportOpen(false)
+      setImportFile(null)
+      fetchLocations()
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || '匯入失敗')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="container mx-auto px-4 py-8">
@@ -146,7 +191,7 @@ const AdminLocations = () => {
               </h1>
               <p className="text-muted-foreground">審核、新增、編輯、刪除地點</p>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-2">
               <Select 
                 value={statusFilter} 
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -157,6 +202,14 @@ const AdminLocations = () => {
                 <option value="approved">已核准</option>
                 <option value="rejected">已拒絕</option>
               </Select>
+              <Button size="lg" variant="outline" className="shadow-sm" onClick={handleDownloadTemplate}>
+                <Download className="h-5 w-5 mr-2" />
+                下載模板
+              </Button>
+              <Button size="lg" variant="outline" className="shadow-sm" onClick={() => setImportOpen(true)}>
+                <Upload className="h-5 w-5 mr-2" />
+                批量匯入
+              </Button>
               <Link to="/admin/locations/new">
                 <Button size="lg" className="shadow-md">
                   <Plus className="h-5 w-5 mr-2" />
@@ -282,6 +335,32 @@ const AdminLocations = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Import Dialog */}
+        <Dialog open={importOpen} onOpenChange={setImportOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>批量匯入地點</DialogTitle>
+              <DialogDescription>
+                上傳 Excel 檔案（.xlsx）。請使用下載的模板，圖片 URL 以分號分隔。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <input
+                type="file"
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                className="block w-full text-sm"
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => { setImportOpen(false); setImportFile(null) }}>取消</Button>
+                <Button onClick={handleImport} disabled={importing}>
+                  {importing ? '匯入中...' : '開始匯入'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Confirm Approve */}
         <Dialog open={confirmApproveOpen} onOpenChange={setConfirmApproveOpen}>
