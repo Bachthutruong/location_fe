@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../lib/api'
 import { Card } from '../components/ui/card'
@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input'
 import { Select } from '../components/ui/select'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
-import { MapPin, Search, Navigation, Share2, X, ChevronLeft } from 'lucide-react'
+import { MapPin, Search, Navigation, Share2, X, ChevronLeft, ExternalLink } from 'lucide-react'
 import LocationMap from '../components/LocationMap'
 import toast from 'react-hot-toast'
 import { useTaiwanCities, useTaiwanDistricts } from '../hooks/useTaiwanLocations'
@@ -41,9 +41,9 @@ const Home = () => {
   const navigate = useNavigate()
   const [locations, setLocations] = useState<AppLocation[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedProvince, setSelectedProvince] = useState('')
   const [selectedDistrict, setSelectedDistrict] = useState('')
   const [selectedLocation, setSelectedLocation] = useState<AppLocation | null>(null)
@@ -57,16 +57,61 @@ const Home = () => {
   const { cities } = useTaiwanCities()
   const { districts } = useTaiwanDistricts(selectedProvince)
 
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories')
+      setCategories(response.data)
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+    }
+  }
+
+  const fetchLocations = useCallback(async () => {
+    // Only fetch if all required filters are set and at least one category is selected
+    if (!selectedProvince || !selectedDistrict || selectedCategories.length === 0) {
+      return
+    }
+
+    try {
+      setLoading(true)
+      const params: any = {
+        categories: selectedCategories.join(','), // Send as comma-separated string
+        province: selectedProvince,
+        district: selectedDistrict
+      }
+      if (search) params.search = search
+
+      const response = await api.get('/locations', { params })
+      setLocations(response.data)
+    } catch (error: any) {
+      toast.error('載入地點列表時發生錯誤')
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedProvince, selectedDistrict, selectedCategories, search])
+
+  // Fetch categories on mount only
   useEffect(() => {
-    fetchLocations()
     fetchCategories()
-  }, [selectedCategory, selectedProvince, selectedDistrict, search])
+  }, [])
+
+  // Only fetch locations when all required filters are set: province, district, and at least one category
+  // Also refetch when search changes (if all filters are set)
+  useEffect(() => {
+    if (selectedProvince && selectedDistrict && selectedCategories.length > 0) {
+      fetchLocations()
+    } else {
+      // Clear locations if filters are not complete
+      setLocations([])
+      setSelectedLocation(null)
+    }
+  }, [selectedCategories, selectedProvince, selectedDistrict, search, fetchLocations])
 
   // Reset selected location when filters/search change to avoid showing detail by default
   useEffect(() => {
     setSelectedLocation(null)
     setSidebarOpen(true)
-  }, [selectedCategory, selectedProvince, selectedDistrict, search])
+  }, [selectedCategories, selectedProvince, selectedDistrict, search])
 
   // Invalidate map size when sidebar opens/closes
   useEffect(() => {
@@ -95,33 +140,6 @@ const Home = () => {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  const fetchLocations = async () => {
-    try {
-      setLoading(true)
-      const params: any = {}
-      if (selectedCategory) params.category = selectedCategory
-      if (selectedProvince) params.province = selectedProvince
-      if (selectedDistrict) params.district = selectedDistrict
-      if (search) params.search = search
-
-      const response = await api.get('/locations', { params })
-      setLocations(response.data)
-    } catch (error: any) {
-      toast.error('載入地點列表時發生錯誤')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchCategories = async () => {
-    try {
-      const response = await api.get('/categories')
-      setCategories(response.data)
-    } catch (error) {
-      console.error('Error fetching categories:', error)
-    }
-  }
-
   // Provinces and districts are now from Taiwan API, not from locations
 
   const handleLocationClick = (location: AppLocation) => {
@@ -131,7 +149,7 @@ const Home = () => {
 
   const handleClearSearch = () => {
     setSearch('')
-    setSelectedCategory('')
+    setSelectedCategories([])
     setSelectedProvince('')
     setSelectedDistrict('')
     setSelectedLocation(null)
@@ -202,40 +220,78 @@ const Home = () => {
                   </button>
                 )}
               </div>
-              {/* Quick filters */}
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <Select
-                  value={selectedCategory}
-                  onChange={(e) => { setSelectedCategory(e.target.value); setSidebarOpen(true); console.log('[Home] category changed ->', e.target.value) }}
-                  className="h-9 border-gray-200"
-                >
-                  <option value="">Tất cả phân loại</option>
-                  {categories.map((cat) => (
-                    <option key={cat._id} value={cat._id}>{cat.name}</option>
-                  ))}
-                </Select>
+              {/* Province and District filters */}
+              <div className="mt-3 grid grid-cols-2 gap-2">
                 <Select
                   value={selectedProvince}
-                  onChange={(e) => { setSelectedProvince(e.target.value); setSelectedDistrict(''); setSidebarOpen(true); console.log('[Home] province changed ->', e.target.value) }}
+                  onChange={(e) => { 
+                    setSelectedProvince(e.target.value); 
+                    setSelectedDistrict(''); 
+                    setSelectedCategories([]);
+                    setLocations([]);
+                    setSelectedLocation(null);
+                    setSidebarOpen(true); 
+                    console.log('[Home] province changed ->', e.target.value) 
+                  }}
                   className="h-9 border-gray-200"
                 >
-                  <option value="">Tất cả tỉnh thành</option>
+                  <option value="">所有縣市</option>
                   {cities.map((city) => (
                     <option key={city.code} value={city.name}>{city.name} ({city.nameEn})</option>
                   ))}
                 </Select>
                 <Select
                   value={selectedDistrict}
-                  onChange={(e) => { setSelectedDistrict(e.target.value); setSidebarOpen(true); console.log('[Home] district changed ->', e.target.value) }}
+                  onChange={(e) => { 
+                    setSelectedDistrict(e.target.value); 
+                    setSelectedCategories([]);
+                    setLocations([]);
+                    setSelectedLocation(null);
+                    setSidebarOpen(true); 
+                    console.log('[Home] district changed ->', e.target.value) 
+                  }}
                   disabled={!selectedProvince}
                   className="h-9 border-gray-200"
                 >
-                  <option value="">Tất cả quận/huyện</option>
+                  <option value="">所有區域</option>
                   {districts.map((district) => (
                     <option key={district.code} value={district.name}>{district.name} ({district.nameEn})</option>
                   ))}
                 </Select>
               </div>
+              
+              {/* Category tags - only show when province and district are selected */}
+              {selectedProvince && selectedDistrict && (
+                <div className="mt-3">
+                  <div className="text-sm text-muted-foreground mb-2">分類:</div>  
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((cat) => {
+                      const isSelected = selectedCategories.includes(cat._id)
+                      return (
+                        <Badge
+                          key={cat._id}
+                          variant={isSelected ? "default" : "outline"}
+                          className="cursor-pointer px-3 py-1.5 text-sm hover:bg-primary hover:text-primary-foreground transition-colors"
+                          onClick={() => {
+                            if (isSelected) {
+                              // Remove category from selection
+                              setSelectedCategories(selectedCategories.filter(id => id !== cat._id))
+                              setLocations([])
+                              setSelectedLocation(null)
+                            } else {
+                              // Add category to selection
+                              setSelectedCategories([...selectedCategories, cat._id])
+                              setSidebarOpen(true)
+                            }
+                          }}
+                        >
+                          {cat.name}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -290,7 +346,7 @@ const Home = () => {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Tổng quan
+                總覽
               </button>
               <button
                 onClick={() => setActiveTab('reviews')}
@@ -300,7 +356,7 @@ const Home = () => {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Bài đánh giá
+                評論
               </button>
               <button
                 onClick={() => setActiveTab('about')}
@@ -310,7 +366,7 @@ const Home = () => {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Giới thiệu
+                介紹
               </button>
             </div>
 
@@ -323,11 +379,11 @@ const Home = () => {
                 onClick={() => window.open(selectedLocation.googleMapsLink, '_blank', 'noopener,noreferrer')}
               >
                 <Navigation className="h-4 w-4 mr-2" />
-                Đường đi
+                路線
               </Button>
               <Button variant="outline" size="sm" onClick={handleShare} className="w-full">
                 <Share2 className="h-4 w-4 mr-2" />
-                Chia sẻ
+                分享
               </Button>
             </div>
 
@@ -344,14 +400,14 @@ const Home = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Quản lý:</span>
+                    <span className="text-muted-foreground">管理員:</span>
                     <span>{selectedLocation.manager.name}</span>
                   </div>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <h3 className="font-semibold mb-2">Mô tả</h3>
+                  <h3 className="font-semibold mb-2">描述</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {selectedLocation.description}
                   </p>
@@ -360,7 +416,7 @@ const Home = () => {
                 {/* Images */}
                 {selectedLocation.images.length > 1 && (
                   <div>
-                    <h3 className="font-semibold mb-2">Ảnh và video</h3>
+                    <h3 className="font-semibold mb-2">圖片和影片</h3>
                     <div className="grid grid-cols-2 gap-2">
                       {selectedLocation.images.slice(1, 5).map((image, index) => (
                         <img
@@ -386,13 +442,13 @@ const Home = () => {
 
             {activeTab === 'reviews' && (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">Đánh giá sẽ được hiển thị ở trang chi tiết</p>
+                <p className="text-muted-foreground">評論將在詳細頁面顯示</p>
                 <Button
                   variant="outline"
                   className="mt-4"
                   onClick={() => navigate(`/location/${selectedLocation._id}`)}
                 >
-                  Xem tất cả đánh giá
+                  查看所有評論
                 </Button>
               </div>
             )}
@@ -400,22 +456,22 @@ const Home = () => {
             {activeTab === 'about' && (
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2">Thông tin</h3>
+                  <h3 className="font-semibold mb-2">資訊</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tỉnh thành:</span>
+                      <span className="text-muted-foreground">縣市:</span>
                       <span>{selectedLocation.province}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Quận/Huyện:</span>
+                      <span className="text-muted-foreground">區/鄉鎮:</span>
                       <span>{selectedLocation.district}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Phân loại:</span>
+                      <span className="text-muted-foreground">分類:</span>
                       <span>{selectedLocation.category.name}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Quản lý:</span>
+                      <span className="text-muted-foreground">管理員:</span>
                       <span>{selectedLocation.manager.name}</span>
                     </div>
                   </div>
@@ -427,10 +483,30 @@ const Home = () => {
           // Locations List View
           <div className="pt-4 px-4">
             <div className="flex items-center justify-between mb-3 sticky top-0 bg-white pb-3">
-              <h2 className="text-base font-semibold text-gray-800">Kết quả</h2>
+              <h2 className="text-base font-semibold text-gray-800">結果</h2>
             </div>
 
-            {loading ? (
+            {!selectedProvince || !selectedDistrict ? (
+              <div className="text-center py-12">
+                <MapPin className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-medium text-muted-foreground">
+                  請選擇縣市和區/鄉鎮
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  然後選擇分類以查看地點
+                </p>
+              </div>
+            ) : selectedCategories.length === 0 ? (
+              <div className="text-center py-12">
+                <MapPin className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-medium text-muted-foreground">
+                  請選擇分類
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  選擇一個或多個分類以上以查看地點
+                </p>
+              </div>
+            ) : loading ? (
               <div className="flex items-center justify-center py-20">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
               </div>
@@ -438,10 +514,10 @@ const Home = () => {
               <div className="text-center py-12">
                 <MapPin className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                 <p className="text-lg font-medium text-muted-foreground">
-                  Không tìm thấy địa điểm nào
+                  找不到任何地點
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
+                  嘗試更改篩選條件或搜尋關鍵字
                 </p>
               </div>
             ) : (
@@ -477,7 +553,22 @@ const Home = () => {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg mb-1 line-clamp-1">{loc.name}</h3>
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h3 className="font-semibold text-lg line-clamp-1 flex-1">{loc.name}</h3>
+                          {loc.googleMapsLink && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                window.open(loc.googleMapsLink, '_blank', 'noopener,noreferrer')
+                              }}
+                              className="p-1.5 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+                              aria-label="開啟 Google 地圖"
+                              title="開啟 Google 地圖"
+                            >
+                              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                           <MapPin className="h-3 w-3 flex-shrink-0" />
                           <span className="line-clamp-1">{loc.address}</span>
@@ -548,7 +639,7 @@ const Home = () => {
       </div>
 
       {/* Results Count Badge */}
-      {!selectedLocation && (
+      {!selectedLocation && selectedProvince && selectedDistrict && selectedCategories.length > 0 && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] bg-white px-4 py-2 rounded-full shadow-md text-sm">
           找到 <span className="font-semibold text-primary">{locations.length}</span> 個地點
         </div>
