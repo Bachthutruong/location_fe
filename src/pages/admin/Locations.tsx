@@ -38,6 +38,7 @@ interface Location {
   }
   approvedAt?: string
   createdAt: string
+  featured?: boolean
 }
 
 //
@@ -274,6 +275,7 @@ const AdminLocations = () => {
                     <TableHead>地址</TableHead>
                     <TableHead>分類</TableHead>
                     <TableHead>管理人</TableHead>
+                    <TableHead>精選</TableHead>
                     <TableHead>狀態</TableHead>
                     <TableHead>審核者</TableHead>
                     <TableHead>建立日期</TableHead>
@@ -294,6 +296,21 @@ const AdminLocations = () => {
                         <TableCell>{location.address}</TableCell>
                         <TableCell>{location.category.name}</TableCell>
                         <TableCell>{location.manager.name}</TableCell>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(location.featured)}
+                            onChange={async (e) => {
+                              try {
+                                await api.patch(`/locations/${location._id}/featured`, { featured: e.target.checked })
+                                toast.success(e.target.checked ? '已標記為精選' : '已取消精選')
+                                fetchLocations()
+                              } catch (err: any) {
+                                toast.error(err.response?.data?.message || '更新精選狀態失敗')
+                              }
+                            }}
+                          />
+                        </TableCell>
                         <TableCell>{getStatusBadge(location.status)}</TableCell>
                         <TableCell>
                           {location.approvedBy ? location.approvedBy.name : '-'}

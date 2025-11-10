@@ -14,7 +14,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'https://location-be-zgoj.onrender.com',
+          target: 'https://location-be-zgoj.onrender.com',
         // target: 'http://localhost:5005',
         changeOrigin: true,
       },

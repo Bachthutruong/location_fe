@@ -1,7 +1,7 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom'
 import { isAuthenticated, getUser, removeToken, removeUser } from '../lib/auth'
 import { Button } from './ui/button'
-import { LogOut, MapPin, Home, Users, Flag, Trash2, FileCheck, Building2, Tags } from 'lucide-react'
+import { LogOut, MapPin, Home, Users, Flag, Trash2, FileCheck, Building2, Tags, Settings } from 'lucide-react'
 
 const Layout = () => {
   const navigate = useNavigate()
@@ -66,6 +66,12 @@ const Layout = () => {
                       <Button variant="ghost" size="sm">
                         <Trash2 className="h-4 w-4 mr-2" />
                         已刪除
+                      </Button>
+                    </Link>
+                    <Link to="/admin/settings">
+                      <Button variant="ghost" size="sm">
+                        <Settings className="h-4 w-4 mr-2" />
+                        設定
                       </Button>
                     </Link>
                   </>

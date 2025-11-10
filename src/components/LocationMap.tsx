@@ -35,6 +35,18 @@ const createNormalIcon = () => {
   })
 }
 
+// Custom icon for featured location (gold/yellow with highlight)
+const createFeaturedIcon = () => {
+  return L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png',
+    iconSize: [30, 48], // Slightly larger
+    iconAnchor: [15, 48],
+    popupAnchor: [1, -40],
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+    shadowSize: [41, 41],
+  })
+}
+
 interface MapLocation {
   _id: string
   name: string
@@ -44,6 +56,7 @@ interface MapLocation {
   longitude?: number
   googleMapsLink?: string
   category?: { _id?: string; name: string }
+  featured?: boolean
 }
 
 interface LocationMapProps {
@@ -291,11 +304,23 @@ const LocationMap: React.FC<LocationMapProps> = ({ locations, selectedLocation, 
         
         {validLocations.map((location) => {
           const isSelected = selectedLocation?._id === location._id
+          const isFeatured = location.featured === true
+          
+          // Choose icon: selected (red) > featured (gold) > normal (blue)
+          let icon
+          if (isSelected) {
+            icon = createSelectedIcon()
+          } else if (isFeatured) {
+            icon = createFeaturedIcon()
+          } else {
+            icon = createNormalIcon()
+          }
+          
           return (
             <Marker
               key={location._id}
               position={[location.latitude!, location.longitude!]}
-              icon={isSelected ? createSelectedIcon() : createNormalIcon()}
+              icon={icon}
               eventHandlers={{
                 click: () => {
                   if (onLocationClick) {
@@ -304,17 +329,48 @@ const LocationMap: React.FC<LocationMapProps> = ({ locations, selectedLocation, 
                 },
                 mouseover: (e) => {
                   (e.target as any).openPopup()
-                },
-                mouseout: (e) => {
-                  (e.target as any).closePopup()
                 }
               }}
             >
-              <Popup>
+              <Popup
+                closeOnClick={false}
+                autoPan={true}
+                eventHandlers={{
+                  add: (e) => {
+                    // Keep popup open when hovering over it
+                    const popup = e.popup
+                    const popupElement = popup.getElement()
+                    if (popupElement) {
+                      popupElement.addEventListener('mouseenter', () => {
+                        popup.options.autoClose = false
+                      })
+                      popupElement.addEventListener('mouseleave', () => {
+                        popup.options.autoClose = true
+                        setTimeout(() => {
+                          if (!popupElement.matches(':hover')) {
+                            popup.close()
+                          }
+                        }, 100)
+                      })
+                    }
+                  }
+                }}
+              >
                 <div className="p-2 min-w-[200px]">
-                  <h3 className="font-semibold text-sm mb-1">{location.name}</h3>
+                  {isFeatured && (
+                    <div className="mb-1">
+                      <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300 font-semibold">
+                        ⭐ 精選
+                      </span>
+                    </div>
+                  )}
+                  <h3 className={`font-semibold text-sm mb-1 ${isFeatured ? 'text-yellow-700' : ''}`}>
+                    {location.name}
+                  </h3>
                   <p className="text-xs text-muted-foreground mb-2">{location.address}</p>
-                  <p className="text-xs text-muted-foreground mb-2">{location.phone}</p>
+                  {location.phone && (
+                    <p className="text-xs text-muted-foreground mb-2">{location.phone}</p>
+                  )}
                   {location.category?.name && (
                     <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border">
                       {location.category.name}

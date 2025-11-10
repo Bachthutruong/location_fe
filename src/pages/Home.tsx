@@ -30,6 +30,7 @@ interface AppLocation {
     _id: string
     name: string
   }
+  featured?: boolean
 }
 
 interface Category {
@@ -40,6 +41,7 @@ interface Category {
 const Home = () => {
   const navigate = useNavigate()
   const [locations, setLocations] = useState<AppLocation[]>([])
+  const [featured, setFeatured] = useState<AppLocation[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
@@ -67,18 +69,20 @@ const Home = () => {
   }
 
   const fetchLocations = useCallback(async () => {
-    // Only fetch if all required filters are set and at least one category is selected
-    if (!selectedProvince || !selectedDistrict || selectedCategories.length === 0) {
-      return
-    }
+    // Fetch when any filter/search/category is provided; otherwise it's landing
+    const anyFilter =
+      Boolean(selectedProvince) ||
+      Boolean(selectedDistrict) ||
+      selectedCategories.length > 0 ||
+      Boolean(search)
+    if (!anyFilter) return
 
     try {
       setLoading(true)
-      const params: any = {
-        categories: selectedCategories.join(','), // Send as comma-separated string
-        province: selectedProvince,
-        district: selectedDistrict
-      }
+      const params: any = {}
+      if (selectedCategories.length > 0) params.categories = selectedCategories.join(',')
+      if (selectedProvince) params.province = selectedProvince
+      if (selectedDistrict) params.district = selectedDistrict
       if (search) params.search = search
 
       const response = await api.get('/locations', { params })
@@ -95,16 +99,48 @@ const Home = () => {
     fetchCategories()
   }, [])
 
-  // Only fetch locations when all required filters are set: province, district, and at least one category
-  // Also refetch when search changes (if all filters are set)
+  // Load default province from settings
   useEffect(() => {
-    if (selectedProvince && selectedDistrict && selectedCategories.length > 0) {
-      fetchLocations()
-    } else {
-      // Clear locations if filters are not complete
-      setLocations([])
-      setSelectedLocation(null)
+    const loadDefaultProvince = async () => {
+      try {
+        const res = await api.get('/settings')
+        if (res.data?.defaultProvince) {
+          setSelectedProvince(res.data.defaultProvince)
+        }
+      } catch (e) {
+        // silent
+      }
     }
+    loadDefaultProvince()
+  }, [])
+
+  // Fetch featured locations for landing view
+  useEffect(() => {
+    const loadFeatured = async () => {
+      try {
+        const res = await api.get('/locations', { params: { featured: true, limit: 12 } })
+        setFeatured(Array.isArray(res.data) ? res.data : (res.data.items || []))
+      } catch (e) {
+        // silent
+      }
+    }
+    loadFeatured()
+  }, [])
+
+  // Fetch locations when any filter/search/category is set
+  useEffect(() => {
+    const anyFilter =
+      Boolean(selectedProvince) ||
+      Boolean(selectedDistrict) ||
+      selectedCategories.length > 0 ||
+      Boolean(search)
+    if (anyFilter) {
+      fetchLocations()
+      return
+    }
+    // Landing default
+    setLocations([])
+    setSelectedLocation(null)
   }, [selectedCategories, selectedProvince, selectedDistrict, search, fetchLocations])
 
   // Reset selected location when filters/search change to avoid showing detail by default
@@ -174,6 +210,44 @@ const Home = () => {
       }
     }
   }
+
+  // Landing / filter states
+  const noFilters = !selectedProvince && !selectedDistrict && selectedCategories.length === 0 && !search
+  const anyFilter =
+    Boolean(selectedProvince) ||
+    Boolean(selectedDistrict) ||
+    selectedCategories.length > 0 ||
+    Boolean(search)
+
+  // Filter featured locations based on current filters
+  const filteredFeatured = featured.filter((loc) => {
+    // Filter by province
+    if (selectedProvince && loc.province !== selectedProvince) {
+      return false
+    }
+    // Filter by district
+    if (selectedDistrict && loc.district !== selectedDistrict) {
+      return false
+    }
+    // Filter by categories
+    if (selectedCategories.length > 0) {
+      const locCategoryId = (loc.category as any)?._id || loc.category?._id
+      if (!locCategoryId || !selectedCategories.includes(locCategoryId)) {
+        return false
+      }
+    }
+    // Filter by search
+    if (search) {
+      const searchLower = search.toLowerCase()
+      const nameMatch = loc.name.toLowerCase().includes(searchLower)
+      const addressMatch = loc.address.toLowerCase().includes(searchLower)
+      const descMatch = loc.description?.toLowerCase().includes(searchLower)
+      if (!nameMatch && !addressMatch && !descMatch) {
+        return false
+      }
+    }
+    return true
+  })
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-[#e9eef6]">
@@ -260,8 +334,8 @@ const Home = () => {
                 </Select>
               </div>
               
-              {/* Category tags - only show when province and district are selected */}
-              {selectedProvince && selectedDistrict && (
+              {/* Category tags - always visible so user can pick without district */}
+              {true && (
                 <div className="mt-3">
                   <div className="text-sm text-muted-foreground mb-2">分類:</div>  
                   <div className="flex flex-wrap gap-2">
@@ -486,24 +560,11 @@ const Home = () => {
               <h2 className="text-base font-semibold text-gray-800">結果</h2>
             </div>
 
-            {!selectedProvince || !selectedDistrict ? (
+            {!anyFilter ? (
               <div className="text-center py-12">
                 <MapPin className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                 <p className="text-lg font-medium text-muted-foreground">
-                  請選擇縣市和區/鄉鎮
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  然後選擇分類以查看地點
-                </p>
-              </div>
-            ) : selectedCategories.length === 0 ? (
-              <div className="text-center py-12">
-                <MapPin className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <p className="text-lg font-medium text-muted-foreground">
-                  請選擇分類
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  選擇一個或多個分類以上以查看地點
+                  請選擇分類或輸入搜尋，或選擇縣市/區域
                 </p>
               </div>
             ) : loading ? (
@@ -530,6 +591,8 @@ const Home = () => {
                     key={loc._id}
                     className={`cursor-pointer hover:shadow-lg transition-all border-0 ${
                       selectedId === loc._id ? 'ring-2 ring-primary' : ''
+                    } ${
+                      loc.featured ? 'ring-2 ring-yellow-400 bg-yellow-50/30' : ''
                     }`}
                     onClick={() => handleLocationClick(location as any)}
                     onMouseEnter={() => setHoveredId(loc._id)}
@@ -544,7 +607,14 @@ const Home = () => {
                             className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
                           />
                         )}
-                        {hoveredId === loc._id && (
+                        {loc.featured && (
+                          <div className="absolute top-1 left-1">
+                            <Badge className="text-xs shadow-sm bg-yellow-500 text-white border-yellow-600">
+                              ⭐ 精選
+                            </Badge>
+                          </div>
+                        )}
+                        {hoveredId === loc._id && !loc.featured && (
                           <div className="absolute top-1 right-1">
                             <Badge variant="secondary" className="text-xs shadow-sm">
                               {loc.category?.name}
@@ -554,7 +624,16 @@ const Home = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-1">
-                          <h3 className="font-semibold text-lg line-clamp-1 flex-1">{loc.name}</h3>
+                          <div className="flex-1">
+                            {loc.featured && (
+                              <Badge className="text-xs mb-1 bg-yellow-100 text-yellow-800 border-yellow-300">
+                                ⭐ 精選
+                              </Badge>
+                            )}
+                            <h3 className={`font-semibold text-lg line-clamp-1 ${loc.featured ? 'text-yellow-700' : ''}`}>
+                              {loc.name}
+                            </h3>
+                          </div>
                           {loc.googleMapsLink && (
                             <button
                               onClick={(e) => {
@@ -597,17 +676,19 @@ const Home = () => {
         </button>
       )}
 
-      {/* Fullscreen Map */}
+      {/* Map Area */}
       <div 
-        className="absolute top-0 bottom-0 right-0 z-0"
+        className={`absolute right-0 z-0 top-0 ${filteredFeatured.length > 0 ? '' : 'bottom-0'}`}
         style={{
           marginLeft: sidebarOpen ? `${sidebarWidth}px` : '0px',
           transition: 'margin-left 0.3s ease',
-          width: sidebarOpen ? `calc(100% - ${sidebarWidth}px)` : '100%'
+          width: sidebarOpen ? `calc(100% - ${sidebarWidth}px)` : '100%',
+          height: filteredFeatured.length > 0 ? '33vh' : undefined,
+          position: 'absolute'
         }}
       >
         <LocationMap
-          locations={locations}
+          locations={noFilters ? (featured || []) : (locations.length > 0 ? locations : (selectedLocation ? [selectedLocation as any] : []))}
           selectedLocation={selectedLocation}
           onLocationClick={handleLocationClick}
           onProvinceSelect={(name) => {
@@ -637,6 +718,39 @@ const Home = () => {
           </button>
         </div>
       </div>
+
+      {/* Featured grid - always show when there's data, filtered by current filters */}
+      {filteredFeatured.length > 0 && (
+        <div
+          className="absolute left-0 right-0 bottom-0 overflow-y-auto bg-white"
+          style={{
+            marginLeft: sidebarOpen ? `${sidebarWidth}px` : '0px',
+            top: '33vh',
+            maxHeight: 'calc(100vh - 33vh)',
+            padding: '24px',
+            width: sidebarOpen ? `calc(100% - ${sidebarWidth}px)` : '100%',
+            zIndex: 10
+          }}
+        >
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-semibold mb-4">精選地點</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredFeatured.map((loc) => (
+                <Card key={loc._id} className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/location/${loc._id}`)}>
+                  {loc.images?.[0] && (
+                    <img src={loc.images[0]} alt={loc.name} className="w-full h-40 object-cover" />
+                  )}
+                  <div className="p-3">
+                    <div className="text-xs text-muted-foreground mb-1">{(loc as any).category?.name}</div>
+                    <div className="font-semibold line-clamp-1 mb-1">{loc.name}</div>
+                    <div className="text-xs text-muted-foreground line-clamp-2">{(loc as any).address}</div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Results Count Badge */}
       {!selectedLocation && selectedProvince && selectedDistrict && selectedCategories.length > 0 && (

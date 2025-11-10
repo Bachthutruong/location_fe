@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
-import { Users, Flag, Trash2, Tag } from 'lucide-react'
+import { Users, Flag, Trash2, Tag, Settings } from 'lucide-react'
 
 const AdminDashboard = () => {
   return (
@@ -86,6 +86,25 @@ const AdminDashboard = () => {
             <CardContent className="pt-6">
               <Button className="w-full" variant="outline">
                 查看已刪除
+              </Button>
+            </CardContent>
+          </Link>
+        </Card>
+
+        <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-md group cursor-pointer">
+          <Link to="/admin/settings">
+            <CardHeader className="bg-gradient-to-br from-purple-500/10 to-purple-600/5">
+              <CardTitle className="flex items-center gap-3 text-xl">
+                <div className="p-2 bg-purple-500 rounded-lg text-white group-hover:scale-110 transition-transform">
+                  <Settings className="h-6 w-6" />
+                </div>
+                設定
+              </CardTitle>
+              <CardDescription className="mt-2">管理系統設定</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <Button className="w-full" variant="outline">
+                管理設定
               </Button>
             </CardContent>
           </Link>

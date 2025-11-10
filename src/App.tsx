@@ -11,6 +11,7 @@ import AdminReports from './pages/admin/Reports'
 import AdminDeletedLocations from './pages/admin/DeletedLocations'
 import AdminLocations from './pages/admin/Locations'
 import AdminLocationForm from './pages/admin/LocationForm'
+import AdminSettings from './pages/admin/Settings'
 import StaffLocations from './pages/staff/Locations'
 import ManagerLocations from './pages/manager/Locations'
 import ManagerLocationForm from './pages/manager/LocationForm'
@@ -99,6 +100,14 @@ function App() {
             element={
               <ProtectedRoute requiredRoles={['admin']}>
                 <AdminLocationForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute requiredRoles={['admin']}>
+                <AdminSettings />
               </ProtectedRoute>
             }
           />
