@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../lib/api'
 import { Card } from '../components/ui/card'
@@ -114,11 +114,11 @@ const Home = () => {
     loadDefaultProvince()
   }, [])
 
-  // Fetch featured locations for landing view
+  // Fetch featured locations for landing view - always load all featured locations from entire country
   useEffect(() => {
     const loadFeatured = async () => {
       try {
-        const res = await api.get('/locations', { params: { featured: true, limit: 12 } })
+        const res = await api.get('/locations', { params: { featured: true } })
         setFeatured(Array.isArray(res.data) ? res.data : (res.data.items || []))
       } catch (e) {
         // silent
@@ -212,42 +212,42 @@ const Home = () => {
   }
 
   // Landing / filter states
-  const noFilters = !selectedProvince && !selectedDistrict && selectedCategories.length === 0 && !search
   const anyFilter =
     Boolean(selectedProvince) ||
     Boolean(selectedDistrict) ||
     selectedCategories.length > 0 ||
     Boolean(search)
 
-  // Filter featured locations based on current filters
-  const filteredFeatured = featured.filter((loc) => {
-    // Filter by province
-    if (selectedProvince && loc.province !== selectedProvince) {
-      return false
+  // Always show all featured locations from entire country (no filtering)
+  const filteredFeatured = featured
+
+  // Map displays: all featured locations (always) + filtered normal locations (when filters are active)
+  const mapLocations = useMemo(() => {
+    const locationMap = new Map<string, AppLocation>()
+    
+    // 1. Always include ALL featured locations on the map, regardless of filters
+    // This ensures featured locations are visible even when filtering by province/district
+    featured.forEach(loc => {
+      locationMap.set(loc._id, loc)
+    })
+    
+    // 2. Then add filtered locations (normal results)
+    if (locations.length > 0) {
+      locations.forEach(loc => {
+        // Avoid duplicates if a location is both featured and in the filtered list
+        if (!locationMap.has(loc._id)) {
+          locationMap.set(loc._id, loc)
+        }
+      })
     }
-    // Filter by district
-    if (selectedDistrict && loc.district !== selectedDistrict) {
-      return false
+    
+    // 3. Ensure selected location is visible
+    if (selectedLocation && !locationMap.has(selectedLocation._id)) {
+      locationMap.set(selectedLocation._id, selectedLocation)
     }
-    // Filter by categories
-    if (selectedCategories.length > 0) {
-      const locCategoryId = (loc.category as any)?._id || loc.category?._id
-      if (!locCategoryId || !selectedCategories.includes(locCategoryId)) {
-        return false
-      }
-    }
-    // Filter by search
-    if (search) {
-      const searchLower = search.toLowerCase()
-      const nameMatch = loc.name.toLowerCase().includes(searchLower)
-      const addressMatch = loc.address.toLowerCase().includes(searchLower)
-      const descMatch = loc.description?.toLowerCase().includes(searchLower)
-      if (!nameMatch && !addressMatch && !descMatch) {
-        return false
-      }
-    }
-    return true
-  })
+    
+    return Array.from(locationMap.values())
+  }, [featured, locations, selectedLocation])
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-[#e9eef6]">
@@ -676,19 +676,19 @@ const Home = () => {
         </button>
       )}
 
-      {/* Map Area */}
+      {/* Map Area - takes 2/3 of viewport */}
       <div 
-        className={`absolute right-0 z-0 top-0 ${filteredFeatured.length > 0 ? '' : 'bottom-0'}`}
+        className="absolute right-0 z-0 top-0"
         style={{
           marginLeft: sidebarOpen ? `${sidebarWidth}px` : '0px',
           transition: 'margin-left 0.3s ease',
           width: sidebarOpen ? `calc(100% - ${sidebarWidth}px)` : '100%',
-          height: filteredFeatured.length > 0 ? '33vh' : undefined,
+          height: '66vh',
           position: 'absolute'
         }}
       >
         <LocationMap
-          locations={noFilters ? (featured || []) : (locations.length > 0 ? locations : (selectedLocation ? [selectedLocation as any] : []))}
+          locations={mapLocations}
           selectedLocation={selectedLocation}
           onLocationClick={handleLocationClick}
           onProvinceSelect={(name) => {
@@ -719,22 +719,22 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Featured grid - always show when there's data, filtered by current filters */}
-      {filteredFeatured.length > 0 && (
-        <div
-          className="absolute left-0 right-0 bottom-0 overflow-y-auto bg-white"
-          style={{
-            marginLeft: sidebarOpen ? `${sidebarWidth}px` : '0px',
-            top: '33vh',
-            maxHeight: 'calc(100vh - 33vh)',
-            padding: '24px',
-            width: sidebarOpen ? `calc(100% - ${sidebarWidth}px)` : '100%',
-            zIndex: 10
-          }}
-        >
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-xl font-semibold mb-4">精選地點</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Featured locations section - always show at bottom 1/3, displays all featured locations from entire country */}
+      <div
+        className="absolute left-0 right-0 bottom-0 overflow-y-auto bg-white border-t"
+        style={{
+          marginLeft: sidebarOpen ? `${sidebarWidth}px` : '0px',
+          top: '66vh',
+          height: '34vh',
+          padding: '24px',
+          width: sidebarOpen ? `calc(100% - ${sidebarWidth}px)` : '100%',
+          zIndex: 10
+        }}
+      >
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-xl font-semibold mb-4">精選地點</h2>
+          {filteredFeatured.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredFeatured.map((loc) => (
                 <Card key={loc._id} className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/location/${loc._id}`)}>
                   {loc.images?.[0] && (
@@ -748,9 +748,13 @@ const Home = () => {
                 </Card>
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>目前沒有精選地點</p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Results Count Badge */}
       {!selectedLocation && selectedProvince && selectedDistrict && selectedCategories.length > 0 && (
