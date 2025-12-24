@@ -144,7 +144,7 @@ const ManagerLocations = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                地點管理
+                水里地方創生資料庫
               </h1>
               <p className="text-muted-foreground">上傳並管理您的地點</p>
             </div>

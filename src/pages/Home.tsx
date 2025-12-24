@@ -36,6 +36,7 @@ interface AppLocation {
 interface Category {
   _id: string
   name: string
+  locationCount?: number
 }
 
 const Home = () => {
@@ -54,19 +55,24 @@ const Home = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'about'>('overview')
   const sidebarRef = useRef<HTMLDivElement | null>(null)
   const [sidebarWidth, setSidebarWidth] = useState(384)
+  const [defaultSettingsLoaded, setDefaultSettingsLoaded] = useState(false)
 
   // Taiwan locations data from API
   const { cities } = useTaiwanCities()
   const { districts } = useTaiwanDistricts(selectedProvince)
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
-      const response = await api.get('/categories')
+      const params: any = {}
+      if (selectedProvince) params.province = selectedProvince
+      if (selectedDistrict) params.district = selectedDistrict
+      
+      const response = await api.get('/categories', { params })
       setCategories(response.data)
     } catch (error) {
       console.error('Error fetching categories:', error)
     }
-  }
+  }, [selectedProvince, selectedDistrict])
 
   const fetchLocations = useCallback(async () => {
     // Fetch when any filter/search/category is provided; otherwise it's landing
@@ -94,25 +100,47 @@ const Home = () => {
     }
   }, [selectedProvince, selectedDistrict, selectedCategories, search])
 
-  // Fetch categories on mount only
+  // Load default province and district from settings, then fetch categories
   useEffect(() => {
-    fetchCategories()
-  }, [])
-
-  // Load default province from settings
-  useEffect(() => {
-    const loadDefaultProvince = async () => {
+    const loadDefaultSettings = async () => {
       try {
         const res = await api.get('/settings')
+        let province = ''
+        let district = ''
+        
         if (res.data?.defaultProvince) {
-          setSelectedProvince(res.data.defaultProvince)
+          province = res.data.defaultProvince
+          setSelectedProvince(province)
         }
+        if (res.data?.defaultDistrict) {
+          district = res.data.defaultDistrict
+          setSelectedDistrict(district)
+        }
+        
+        // Fetch categories with default filters immediately after loading settings
+        const params: any = {}
+        if (province) params.province = province
+        if (district) params.district = district
+        
+        const categoriesRes = await api.get('/categories', { params })
+        setCategories(categoriesRes.data)
+        setDefaultSettingsLoaded(true)
       } catch (e) {
-        // silent
+        // If settings load fails, still fetch categories without filters
+        fetchCategories()
+        setDefaultSettingsLoaded(true)
       }
     }
-    loadDefaultProvince()
+    loadDefaultSettings()
   }, [])
+
+  // Fetch categories when province/district changes to update counts
+  // Only fetch after default settings are loaded to avoid double fetch
+  useEffect(() => {
+    if (defaultSettingsLoaded) {
+      fetchCategories()
+    }
+  }, [selectedProvince, selectedDistrict, defaultSettingsLoaded, fetchCategories])
 
   // Fetch featured locations for landing view - always load all featured locations from entire country
   useEffect(() => {
@@ -359,7 +387,7 @@ const Home = () => {
                             }
                           }}
                         >
-                          {cat.name}
+                          {cat.name}{cat.locationCount !== undefined ? `(${cat.locationCount})` : ''}
                         </Badge>
                       )
                     })}

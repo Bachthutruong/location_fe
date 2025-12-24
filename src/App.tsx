@@ -12,10 +12,16 @@ import AdminDeletedLocations from './pages/admin/DeletedLocations'
 import AdminLocations from './pages/admin/Locations'
 import AdminLocationForm from './pages/admin/LocationForm'
 import AdminSettings from './pages/admin/Settings'
+import AdminMenus from './pages/admin/Menus'
+import AdminNewsCategories from './pages/admin/NewsCategories'
+import AdminNews from './pages/admin/News'
+import AdminNewsForm from './pages/admin/NewsForm'
 import StaffLocations from './pages/staff/Locations'
 import ManagerLocations from './pages/manager/Locations'
 import ManagerLocationForm from './pages/manager/LocationForm'
 import LocationDetail from './pages/LocationDetail'
+import NewsList from './pages/NewsList'
+import NewsDetail from './pages/NewsDetail'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -30,6 +36,8 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/location/:id" element={<LocationDetail />} />
+          <Route path="/news" element={<NewsList />} />
+          <Route path="/news/:id" element={<NewsDetail />} />
           
           <Route
             path="/admin"
@@ -108,6 +116,46 @@ function App() {
             element={
               <ProtectedRoute requiredRoles={['admin']}>
                 <AdminSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/menus"
+            element={
+              <ProtectedRoute requiredRoles={['admin']}>
+                <AdminMenus />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/news-categories"
+            element={
+              <ProtectedRoute requiredRoles={['admin']}>
+                <AdminNewsCategories />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/news"
+            element={
+              <ProtectedRoute requiredRoles={['admin', 'staff', 'manager']}>
+                <AdminNews />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/news/new"
+            element={
+              <ProtectedRoute requiredRoles={['admin', 'staff', 'manager']}>
+                <AdminNewsForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/news/:id/edit"
+            element={
+              <ProtectedRoute requiredRoles={['admin', 'staff', 'manager']}>
+                <AdminNewsForm />
               </ProtectedRoute>
             }
           />

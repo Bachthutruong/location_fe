@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
-import { Users, Flag, Trash2, Tag, Settings } from 'lucide-react'
+import { Users, Flag, Trash2, Tag, Settings, Menu as MenuIcon, Newspaper, FolderOpen } from 'lucide-react'
 
 const AdminDashboard = () => {
   return (
@@ -105,6 +105,63 @@ const AdminDashboard = () => {
             <CardContent className="pt-6">
               <Button className="w-full" variant="outline">
                 管理設定
+              </Button>
+            </CardContent>
+          </Link>
+        </Card>
+
+        <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-md group cursor-pointer">
+          <Link to="/admin/menus">
+            <CardHeader className="bg-gradient-to-br from-indigo-500/10 to-indigo-600/5">
+              <CardTitle className="flex items-center gap-3 text-xl">
+                <div className="p-2 bg-indigo-500 rounded-lg text-white group-hover:scale-110 transition-transform">
+                  <MenuIcon className="h-6 w-6" />
+                </div>
+                選單
+              </CardTitle>
+              <CardDescription className="mt-2">管理網站選單</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <Button className="w-full" variant="outline">
+                管理選單
+              </Button>
+            </CardContent>
+          </Link>
+        </Card>
+
+        <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-md group cursor-pointer">
+          <Link to="/admin/news-categories">
+            <CardHeader className="bg-gradient-to-br from-cyan-500/10 to-cyan-600/5">
+              <CardTitle className="flex items-center gap-3 text-xl">
+                <div className="p-2 bg-cyan-500 rounded-lg text-white group-hover:scale-110 transition-transform">
+                  <FolderOpen className="h-6 w-6" />
+                </div>
+                新聞分類
+              </CardTitle>
+              <CardDescription className="mt-2">管理新聞分類（活動、促銷、新聞...）</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <Button className="w-full" variant="outline">
+                管理分類
+              </Button>
+            </CardContent>
+          </Link>
+        </Card>
+
+        <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-md group cursor-pointer">
+          <Link to="/admin/news">
+            <CardHeader className="bg-gradient-to-br from-pink-500/10 to-pink-600/5">
+              <CardTitle className="flex items-center gap-3 text-xl">
+                <div className="p-2 bg-pink-500 rounded-lg text-white group-hover:scale-110 transition-transform">
+                  <Newspaper className="h-6 w-6" />
+                </div>
+                新聞
+              </CardTitle>
+              <CardDescription className="mt-2">管理新聞文章</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <Button className="w-full" variant="outline">
+                管理新聞
               </Button>
             </CardContent>
           </Link>
