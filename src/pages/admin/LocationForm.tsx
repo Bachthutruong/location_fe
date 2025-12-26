@@ -37,6 +37,9 @@ const AdminLocationForm = () => {
     description: '',
     latitude: '',
     longitude: '',
+    websiteLink: '',
+    businessHours: '',
+    featuredProducts: '',
   })
 
   const { cities } = useTaiwanCities()
@@ -64,6 +67,9 @@ const AdminLocationForm = () => {
             description: location.description || '',
             latitude: location.latitude?.toString() || '',
             longitude: location.longitude?.toString() || '',
+            websiteLink: location.websiteLink || '',
+            businessHours: location.businessHours || '',
+            featuredProducts: location.featuredProducts || '',
           })
           if (Array.isArray(location.images) && location.images.length > 0) {
             setExistingImages(location.images)
@@ -133,6 +139,9 @@ const AdminLocationForm = () => {
       formDataToSend.append('description', formData.description)
       if (formData.latitude) formDataToSend.append('latitude', formData.latitude)
       if (formData.longitude) formDataToSend.append('longitude', formData.longitude)
+      if (formData.websiteLink) formDataToSend.append('websiteLink', formData.websiteLink)
+      if (formData.businessHours) formDataToSend.append('businessHours', formData.businessHours)
+      if (formData.featuredProducts) formDataToSend.append('featuredProducts', formData.featuredProducts)
       if (isEdit) formDataToSend.append('keepImages', JSON.stringify(existingImages))
       newImages.forEach((image) => formDataToSend.append('images', image))
 
@@ -252,6 +261,18 @@ const AdminLocationForm = () => {
               <div className="space-y-2">
                 <Label htmlFor="description">描述 *</Label>
                 <Textarea id="description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="地點描述..." rows={4} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="websiteLink">網站/社群連結（選填）</Label>
+                <Input id="websiteLink" value={formData.websiteLink} onChange={(e) => setFormData({ ...formData, websiteLink: e.target.value })} placeholder="https://example.com" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="businessHours">營業時間（選填）</Label>
+                <Input id="businessHours" value={formData.businessHours} onChange={(e) => setFormData({ ...formData, businessHours: e.target.value })} placeholder="例如：週一至週五 09:00-18:00" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="featuredProducts">明星商品/服務介紹（選填）</Label>
+                <Textarea id="featuredProducts" value={formData.featuredProducts} onChange={(e) => setFormData({ ...formData, featuredProducts: e.target.value })} placeholder="請詳細介紹商品或服務..." rows={4} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="images">圖片 {!isEdit && '*'} </Label>

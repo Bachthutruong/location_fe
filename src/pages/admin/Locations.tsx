@@ -286,7 +286,7 @@ const AdminLocations = () => {
                   {locations.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        Chưa có địa điểm nào
+                        目前沒有任何地點
                       </TableCell>
                     </TableRow>
                   ) : (

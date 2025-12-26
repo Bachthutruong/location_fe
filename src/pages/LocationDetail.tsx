@@ -30,6 +30,9 @@ interface Location {
   googleMapsLink: string
   latitude?: number
   longitude?: number
+  websiteLink?: string
+  businessHours?: string
+  featuredProducts?: string
   manager: {
     _id: string
     name: string
@@ -209,8 +212,37 @@ const LocationDetail = () => {
                         <p className="text-muted-foreground">管理人</p>
                         <p className="font-medium">{location.manager.name}</p>
                       </div>
+                      {location.businessHours && (
+                        <div className="space-y-1">
+                          <p className="text-muted-foreground">營業時間</p>
+                          <p className="font-medium">{location.businessHours}</p>
+                        </div>
+                      )}
+                      {location.websiteLink && (
+                        <div className="space-y-1">
+                          <p className="text-muted-foreground">網站/社群連結</p>
+                          <a 
+                            href={location.websiteLink} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="font-medium text-primary hover:underline"
+                          >
+                            前往網站
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
+
+                  {location.featuredProducts && (
+                    <div className="bg-muted/50 p-5 rounded-lg">
+                      <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                        <span className="w-1 h-6 bg-primary rounded"></span>
+                        明星商品/服務介紹
+                      </h3>
+                      <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{location.featuredProducts}</p>
+                    </div>
+                  )}
 
                   <div className="flex gap-4 pt-4">
                     <Button asChild size="lg" className="flex-1 shadow-md">

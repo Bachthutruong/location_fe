@@ -26,6 +26,9 @@ interface AppLocation {
   latitude?: number
   longitude?: number
   googleMapsLink: string
+  websiteLink?: string
+  businessHours?: string
+  featuredProducts?: string
   manager: {
     _id: string
     name: string
@@ -296,7 +299,7 @@ const Home = () => {
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
-                <h2 className="text-lg font-semibold">Jiudi Maps</h2>
+                <h2 className="text-lg font-semibold">水里地方創生資料庫</h2>
               </div>
             </div>
             {/* Search bar */}
@@ -304,7 +307,7 @@ const Home = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
-                  placeholder="在 Jiudi Maps 上搜尋"
+                  placeholder="在 水里地方創生資料庫 上搜尋"
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value)
@@ -505,6 +508,25 @@ const Home = () => {
                     <span className="text-muted-foreground">管理員:</span>
                     <span>{selectedLocation.manager.name}</span>
                   </div>
+                  {selectedLocation.businessHours && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">營業時間:</span>
+                      <span>{selectedLocation.businessHours}</span>
+                    </div>
+                  )}
+                  {selectedLocation.websiteLink && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">網站:</span>
+                      <a 
+                        href={selectedLocation.websiteLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        前往網站
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {/* Description */}
@@ -514,6 +536,16 @@ const Home = () => {
                     {selectedLocation.description}
                   </p>
                 </div>
+
+                {/* Featured Products */}
+                {selectedLocation.featuredProducts && (
+                  <div>
+                    <h3 className="font-semibold mb-2">明星商品/服務介紹</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                      {selectedLocation.featuredProducts}
+                    </p>
+                  </div>
+                )}
 
                 {/* Images */}
                 {selectedLocation.images.length > 1 && (
@@ -576,8 +608,35 @@ const Home = () => {
                       <span className="text-muted-foreground">管理員:</span>
                       <span>{selectedLocation.manager.name}</span>
                     </div>
+                    {selectedLocation.businessHours && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">營業時間:</span>
+                        <span>{selectedLocation.businessHours}</span>
+                      </div>
+                    )}
+                    {selectedLocation.websiteLink && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">網站/社群連結:</span>
+                        <a 
+                          href={selectedLocation.websiteLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          前往網站
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
+                {selectedLocation.featuredProducts && (
+                  <div>
+                    <h3 className="font-semibold mb-2">明星商品/服務介紹</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                      {selectedLocation.featuredProducts}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
