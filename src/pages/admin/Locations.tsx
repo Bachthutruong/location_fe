@@ -20,7 +20,7 @@ interface Location {
   category: {
     _id: string
     name: string
-  }
+  } | null
   province: string
   district: string
   street: string
@@ -30,7 +30,7 @@ interface Location {
   manager: {
     _id: string
     name: string
-  }
+  } | null
   status: 'pending' | 'approved' | 'rejected' | 'deleted'
   approvedBy?: {
     _id: string
@@ -294,8 +294,8 @@ const AdminLocations = () => {
                       <TableRow key={location._id}>
                         <TableCell className="font-medium">{location.name}</TableCell>
                         <TableCell>{location.address}</TableCell>
-                        <TableCell>{location.category.name}</TableCell>
-                        <TableCell>{location.manager.name}</TableCell>
+                        <TableCell>{location.category?.name || '-'}</TableCell>
+                        <TableCell>{location.manager?.name || '-'}</TableCell>
                         <TableCell>
                           <input
                             type="checkbox"
