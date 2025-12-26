@@ -188,7 +188,7 @@ const AdminMenus = () => {
       setFormData({
         name: menu.name,
         link: menu.link,
-        parent: typeof menu.parent === 'object' ? menu.parent._id : (menu.parent || ''),
+        parent: menu.parent && typeof menu.parent === 'object' ? menu.parent._id : (menu.parent || ''),
         order: menu.order || 0,
       })
     } else {
@@ -297,7 +297,7 @@ const AdminMenus = () => {
           selectedRoute: menu.link,
           name: menu.name,
           link: menu.link,
-          parent: typeof menu.parent === 'object' ? menu.parent._id : (menu.parent || ''),
+          parent: menu.parent && typeof menu.parent === 'object' ? menu.parent._id : (menu.parent || ''),
           order: menu.order || 0,
         })
       } else {
@@ -306,7 +306,7 @@ const AdminMenus = () => {
           selectedRoute: '',
           name: menu.name,
           link: menu.link,
-          parent: typeof menu.parent === 'object' ? menu.parent._id : (menu.parent || ''),
+          parent: menu.parent && typeof menu.parent === 'object' ? menu.parent._id : (menu.parent || ''),
           order: menu.order || 0,
         })
       }
@@ -575,7 +575,7 @@ const AdminMenus = () => {
     menuList.forEach((menu: Menu) => {
       const menuObj = menuMap.get(menu._id)!
       if (menu.parent) {
-        const parentId = typeof menu.parent === 'object' ? menu.parent._id : menu.parent
+        const parentId = menu.parent && typeof menu.parent === 'object' ? menu.parent._id : menu.parent
         const parent = menuMap.get(parentId)
         if (parent) {
           parent.children.push(menuObj)
@@ -873,7 +873,7 @@ const AdminMenus = () => {
                     {userRootMenus.map((menu) => {
                       // Check if menu is user-specific (has userId)
                       const isUserSpecific = menu.userId && (
-                        typeof menu.userId === 'object' 
+                        typeof menu.userId === 'object' && menu.userId !== null
                           ? menu.userId._id === selectedUser?._id
                           : menu.userId === selectedUser?._id
                       )
@@ -895,7 +895,7 @@ const AdminMenus = () => {
                                   <div className="mt-2 ml-8 space-y-1">
                                     {menu.children.map((child: any) => {
                                       const isChildUserSpecific = child.userId && (
-                                        typeof child.userId === 'object' 
+                                        typeof child.userId === 'object' && child.userId !== null
                                           ? child.userId._id === selectedUser?._id
                                           : child.userId === selectedUser?._id
                                       )
