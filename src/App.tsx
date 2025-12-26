@@ -16,6 +16,7 @@ import AdminMenus from './pages/admin/Menus'
 import AdminNewsCategories from './pages/admin/NewsCategories'
 import AdminNews from './pages/admin/News'
 import AdminNewsForm from './pages/admin/NewsForm'
+import CourseRegistrations from './pages/admin/CourseRegistrations'
 import StaffLocations from './pages/staff/Locations'
 import ManagerLocations from './pages/manager/Locations'
 import ManagerLocationForm from './pages/manager/LocationForm'
@@ -156,6 +157,14 @@ function App() {
             element={
               <ProtectedRoute requiredRoles={['admin', 'staff', 'manager']}>
                 <AdminNewsForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/news/:id/registrations"
+            element={
+              <ProtectedRoute requiredRoles={['admin', 'staff', 'manager']}>
+                <CourseRegistrations />
               </ProtectedRoute>
             }
           />

@@ -4,6 +4,9 @@ import api from '../lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
+import { Input } from '../components/ui/input'
+import { Label } from '../components/ui/label'
+import { Textarea } from '../components/ui/textarea'
 import { ArrowLeft, Calendar, User, Share2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -24,6 +27,7 @@ interface News {
   }
   publishedAt?: string
   createdAt: string
+  isCourse?: boolean
 }
 
 const NewsDetail = () => {
@@ -31,6 +35,13 @@ const NewsDetail = () => {
   const [news, setNews] = useState<News | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [registrationForm, setRegistrationForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    note: ''
+  })
+  const [registering, setRegistering] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -66,6 +77,34 @@ const NewsDetail = () => {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href)
       toast.success('連結已複製到剪貼簿')
+    }
+  }
+
+  const handleRegister = async () => {
+    if (!news?.isCourse || !id) return
+
+    if (!registrationForm.name.trim()) {
+      toast.error('請輸入姓名')
+      return
+    }
+    if (!registrationForm.email.trim()) {
+      toast.error('請輸入 Email')
+      return
+    }
+    if (!registrationForm.phone.trim()) {
+      toast.error('請輸入電話')
+      return
+    }
+
+    try {
+      setRegistering(true)
+      await api.post(`/news/${id}/register`, registrationForm)
+      toast.success('報名課程成功！')
+      setRegistrationForm({ name: '', email: '', phone: '', note: '' })
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || '報名失敗')
+    } finally {
+      setRegistering(false)
     }
   }
 
@@ -254,6 +293,66 @@ const NewsDetail = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Course Registration Form */}
+            {news.isCourse && (
+              <Card className="shadow-md border-primary/20">
+                <CardHeader>
+                  <CardTitle className="text-lg">報名課程</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-name">姓名 *</Label>
+                      <Input
+                        id="reg-name"
+                        type="text"
+                        value={registrationForm.name}
+                        onChange={(e) => setRegistrationForm({ ...registrationForm, name: e.target.value })}
+                        placeholder="請輸入姓名"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-email">Email *</Label>
+                      <Input
+                        id="reg-email"
+                        type="email"
+                        value={registrationForm.email}
+                        onChange={(e) => setRegistrationForm({ ...registrationForm, email: e.target.value })}
+                        placeholder="your@email.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-phone">電話 *</Label>
+                      <Input
+                        id="reg-phone"
+                        type="tel"
+                        value={registrationForm.phone}
+                        onChange={(e) => setRegistrationForm({ ...registrationForm, phone: e.target.value })}
+                        placeholder="0912345678"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-note">備註（選填）</Label>
+                      <Textarea
+                        id="reg-note"
+                        value={registrationForm.note}
+                        onChange={(e) => setRegistrationForm({ ...registrationForm, note: e.target.value })}
+                        placeholder="輸入備註（選填）..."
+                        rows={3}
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleRegister} 
+                      disabled={registering}
+                      className="w-full"
+                    >
+                      {registering ? '報名中...' : '報名課程'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

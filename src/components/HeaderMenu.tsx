@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import api from '../lib/api'
 import { Button } from './ui/button'
 import { Popover, PopoverTrigger, PopoverContent, usePopover } from './ui/popover'
@@ -8,7 +8,11 @@ import { ChevronDown, MoreHorizontal } from 'lucide-react'
 interface MenuItem {
   _id: string
   name: string
-  link: string
+  link?: string
+  menuType?: 'link' | 'filter'
+  filterProvince?: string
+  filterDistrict?: string
+  filterCategories?: string[]
   children?: MenuItem[]
 }
 
@@ -21,6 +25,7 @@ type HeaderMenuProps = {
 const MAX_MAIN_MENUS = 6 // Số menu chính hiển thị trên header
 
 const HeaderMenu: React.FC<HeaderMenuProps> = ({ showAll = false }) => {
+  const location = useLocation()
   const [menus, setMenus] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -36,16 +41,37 @@ const HeaderMenu: React.FC<HeaderMenuProps> = ({ showAll = false }) => {
     return link.startsWith('/') ? link : `/${link}`
   }
 
+  const buildFilterLink = (menu: MenuItem): string => {
+    if (menu.menuType !== 'filter') {
+      return normalizeLink(menu.link || '/')
+    }
+    
+    // Build query parameters for filter menu
+    const params = new URLSearchParams()
+    if (menu.filterProvince) params.set('province', menu.filterProvince)
+    if (menu.filterDistrict) params.set('district', menu.filterDistrict)
+    if (menu.filterCategories && menu.filterCategories.length > 0) {
+      params.set('categories', menu.filterCategories.join(','))
+    }
+    
+    const queryString = params.toString()
+    return queryString ? `/?${queryString}` : '/'
+  }
+
   // Collect all accessible menu links (including children) for ProtectedRoute
   const collectAccessibleLinks = (menuList: MenuItem[]): string[] => {
     const links: string[] = []
     menuList.forEach((menu) => {
-      if (menu.link) {
+      if (menu.menuType === 'filter') {
+        links.push(buildFilterLink(menu))
+      } else if (menu.link) {
         links.push(normalizeLink(menu.link))
       }
       if (menu.children && menu.children.length > 0) {
         menu.children.forEach((child) => {
-          if (child.link) {
+          if (child.menuType === 'filter') {
+            links.push(buildFilterLink(child))
+          } else if (child.link) {
             links.push(normalizeLink(child.link))
           }
         })
@@ -81,6 +107,40 @@ const HeaderMenu: React.FC<HeaderMenuProps> = ({ showAll = false }) => {
 
   const isExternalLink = (link: string) => {
     return link.startsWith('http://') || link.startsWith('https://')
+  }
+
+  // Check if a menu is active based on current location
+  const isMenuActive = (menu: MenuItem): boolean => {
+    if (menu.menuType === 'filter') {
+      // Compare query parameters
+      const currentParams = new URLSearchParams(location.search)
+      
+      // Check if pathname matches
+      if (location.pathname !== '/') return false
+      
+      // Check if all filter params match
+      let allMatch = true
+      if (menu.filterProvince && currentParams.get('province') !== menu.filterProvince) {
+        allMatch = false
+      }
+      if (menu.filterDistrict && currentParams.get('district') !== menu.filterDistrict) {
+        allMatch = false
+      }
+      if (menu.filterCategories && menu.filterCategories.length > 0) {
+        const currentCategories = currentParams.get('categories')?.split(',') || []
+        const menuCategories = menu.filterCategories
+        const categoriesMatch = menuCategories.every(cat => currentCategories.includes(cat)) &&
+                                menuCategories.length === currentCategories.length
+        if (!categoriesMatch) {
+          allMatch = false
+        }
+      }
+      return allMatch
+    } else {
+      const normalizedLink = normalizeLink(menu.link || '/')
+      if (isExternalLink(menu.link || '')) return false
+      return location.pathname === normalizedLink || location.pathname.startsWith(normalizedLink + '/')
+    }
   }
 
 
@@ -130,13 +190,28 @@ const HeaderMenu: React.FC<HeaderMenuProps> = ({ showAll = false }) => {
   }
 
   const renderMenuLink = (menu: MenuItem, isChild = false, onLinkClick?: () => void) => {
+    const isActive = isMenuActive(menu)
     const className = isChild
-      ? 'block px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors'
-      : 'text-sm font-medium hover:text-primary transition-colors'
+      ? `block px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors ${
+          isActive ? 'bg-accent text-accent-foreground font-medium' : ''
+        }`
+      : `text-sm font-medium hover:text-primary transition-colors ${
+          isActive ? 'text-primary font-semibold' : ''
+        }`
 
-    const normalizedLink = normalizeLink(menu.link)
+    // Handle filter menu type
+    if (menu.menuType === 'filter') {
+      const filterLink = buildFilterLink(menu)
+      return (
+        <Link to={filterLink} className={className} onClick={onLinkClick}>
+          {menu.name}
+        </Link>
+      )
+    }
 
-    if (isExternalLink(menu.link)) {
+    const normalizedLink = normalizeLink(menu.link || '/')
+
+    if (isExternalLink(menu.link || '')) {
       return (
         <a
           href={normalizedLink}
@@ -175,6 +250,7 @@ const HeaderMenu: React.FC<HeaderMenuProps> = ({ showAll = false }) => {
   }
 
   const renderMenu = (menu: MenuItem) => {
+    const isActive = isMenuActive(menu)
     // If menu has children, show as popover
     if (menu.children && menu.children.length > 0) {
       return (
@@ -184,7 +260,7 @@ const HeaderMenu: React.FC<HeaderMenuProps> = ({ showAll = false }) => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex items-center gap-1"
+                className={`flex items-center gap-1 ${isActive ? 'text-primary font-semibold' : ''}`}
               >
                 {menu.name}
                 <ChevronDown className="h-4 w-4" />
@@ -198,22 +274,48 @@ const HeaderMenu: React.FC<HeaderMenuProps> = ({ showAll = false }) => {
       )
     } else {
       // Simple link for menu without children
-      const normalizedLink = normalizeLink(menu.link)
+      // Handle filter menu type
+      if (menu.menuType === 'filter') {
+        const filterLink = buildFilterLink(menu)
+        return (
+          <div key={menu._id}>
+            <Link to={filterLink}>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className={isActive ? 'text-primary font-semibold' : ''}
+              >
+                {menu.name}
+              </Button>
+            </Link>
+          </div>
+        )
+      }
+      
+      const normalizedLink = normalizeLink(menu.link || '/')
       return (
         <div key={menu._id}>
-          {isExternalLink(menu.link) ? (
+          {isExternalLink(menu.link || '') ? (
             <a
               href={normalizedLink}
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className={isActive ? 'text-primary font-semibold' : ''}
+              >
                 {menu.name}
               </Button>
             </a>
           ) : (
             <Link to={normalizedLink}>
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className={isActive ? 'text-primary font-semibold' : ''}
+              >
                 {menu.name}
               </Button>
             </Link>

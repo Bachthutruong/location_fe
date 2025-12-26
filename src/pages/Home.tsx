@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { Card } from '../components/ui/card'
 import { Input } from '../components/ui/input'
@@ -44,6 +44,7 @@ interface Category {
 
 const Home = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [locations, setLocations] = useState<AppLocation[]>([])
   const [featured, setFeatured] = useState<AppLocation[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -59,6 +60,7 @@ const Home = () => {
   const sidebarRef = useRef<HTMLDivElement | null>(null)
   const [sidebarWidth, setSidebarWidth] = useState(384)
   const [defaultSettingsLoaded, setDefaultSettingsLoaded] = useState(false)
+  const [urlParamsLoaded, setUrlParamsLoaded] = useState(false)
 
   // Taiwan locations data from API
   const { cities } = useTaiwanCities()
@@ -103,27 +105,61 @@ const Home = () => {
     }
   }, [selectedProvince, selectedDistrict, selectedCategories, search])
 
-  // Load default province and district from settings, then fetch categories
+  // Load filters from URL parameters first (priority), then from settings
   useEffect(() => {
+    const loadFiltersFromUrl = () => {
+      const provinceParam = searchParams.get('province')
+      const districtParam = searchParams.get('district')
+      const categoriesParam = searchParams.get('categories')
+      
+      if (provinceParam) {
+        setSelectedProvince(provinceParam)
+      }
+      if (districtParam) {
+        setSelectedDistrict(districtParam)
+      }
+      if (categoriesParam) {
+        const categoryIds = categoriesParam.split(',').filter(id => id.trim())
+        setSelectedCategories(categoryIds)
+      }
+      
+      setUrlParamsLoaded(true)
+    }
+    
+    loadFiltersFromUrl()
+  }, [searchParams])
+
+  // Load default province and district from settings if no URL params, then fetch categories
+  useEffect(() => {
+    if (!urlParamsLoaded) return
+    
     const loadDefaultSettings = async () => {
       try {
-        const res = await api.get('/settings')
-        let province = ''
-        let district = ''
+        // Only load from settings if URL params don't have province/district
+        const provinceParam = searchParams.get('province')
+        const districtParam = searchParams.get('district')
         
-        if (res.data?.defaultProvince) {
-          province = res.data.defaultProvince
-          setSelectedProvince(province)
-        }
-        if (res.data?.defaultDistrict) {
-          district = res.data.defaultDistrict
-          setSelectedDistrict(district)
+        if (!provinceParam && !districtParam) {
+          const res = await api.get('/settings')
+          let province = ''
+          let district = ''
+          
+          if (res.data?.defaultProvince) {
+            province = res.data.defaultProvince
+            setSelectedProvince(province)
+          }
+          if (res.data?.defaultDistrict) {
+            district = res.data.defaultDistrict
+            setSelectedDistrict(district)
+          }
         }
         
-        // Fetch categories with default filters immediately after loading settings
+        // Fetch categories with current filters
         const params: any = {}
-        if (province) params.province = province
-        if (district) params.district = district
+        const currentProvince = provinceParam || selectedProvince
+        const currentDistrict = districtParam || selectedDistrict
+        if (currentProvince) params.province = currentProvince
+        if (currentDistrict) params.district = currentDistrict
         
         const categoriesRes = await api.get('/categories', { params })
         setCategories(categoriesRes.data)
@@ -135,7 +171,7 @@ const Home = () => {
       }
     }
     loadDefaultSettings()
-  }, [])
+  }, [urlParamsLoaded, searchParams, selectedProvince, selectedDistrict])
 
   // Fetch categories when province/district changes to update counts
   // Only fetch after default settings are loaded to avoid double fetch

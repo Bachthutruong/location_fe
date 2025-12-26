@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Select } from '../../components/ui/select'
 import { Badge } from '../../components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Plus, Edit, Trash2, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface News {
@@ -26,6 +26,7 @@ interface News {
   published: boolean
   publishedAt?: string
   createdAt: string
+  isCourse?: boolean
 }
 
 const AdminNews = () => {
@@ -223,6 +224,14 @@ const AdminNews = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            {item.isCourse && (
+                              <Link to={`/admin/news/${item._id}/registrations`}>
+                                <Button variant="outline" size="sm">
+                                  <Users className="h-4 w-4 mr-2" />
+                                  查看報名
+                                </Button>
+                              </Link>
+                            )}
                             <Link to={`/admin/news/${item._id}/edit`}>
                               <Button variant="outline" size="sm">
                                 <Edit className="h-4 w-4 mr-2" />

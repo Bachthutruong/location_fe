@@ -32,6 +32,7 @@ const AdminNewsForm = () => {
     content: '',
     category: '',
     published: false,
+    isCourse: false,
   })
 
   useEffect(() => {
@@ -49,6 +50,7 @@ const AdminNewsForm = () => {
             content: news.content || '',
             category: news.category?._id || '',
             published: news.published || false,
+            isCourse: news.isCourse || false,
           })
           if (Array.isArray(news.images) && news.images.length > 0) {
             setExistingImages(news.images)
@@ -114,6 +116,7 @@ const AdminNewsForm = () => {
       formDataToSend.append('content', formData.content)
       formDataToSend.append('category', formData.category)
       formDataToSend.append('published', formData.published ? 'true' : 'false')
+      formDataToSend.append('isCourse', formData.isCourse ? 'true' : 'false')
       if (isEdit) formDataToSend.append('keepImages', JSON.stringify(existingImages))
       newImages.forEach((image) => formDataToSend.append('images', image))
 
@@ -215,6 +218,23 @@ const AdminNewsForm = () => {
                   <option value="false">未發布</option>
                   <option value="true">已發布</option>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isCourse"
+                    checked={formData.isCourse}
+                    onChange={(e) => setFormData({ ...formData, isCourse: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <Label htmlFor="isCourse" className="cursor-pointer">
+                    這是 地方創生課程
+                  </Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  勾選後，用戶在查看此新聞時將看到表單來註冊課程
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="images">圖片</Label>
