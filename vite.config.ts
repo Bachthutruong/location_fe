@@ -14,7 +14,7 @@ export default defineConfig({
     port: 3002,
     proxy: {
       '/api': {
-          target: 'https://location-be-zgoj.onrender.com',
+          target: 'https://api-location.jiudi.cloud',
         // target: 'http://localhost:5005',
         changeOrigin: true,
       },
