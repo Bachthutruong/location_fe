@@ -49,7 +49,7 @@ const AdminLocations = () => {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const [pageSize, setPageSize] = useState(50)
   const [total, setTotal] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [confirmApproveOpen, setConfirmApproveOpen] = useState(false)
@@ -185,14 +185,14 @@ const AdminLocations = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
             <div>
               <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 水里地方創生資料庫
               </h1>
               <p className="text-muted-foreground">審核、新增、編輯、刪除地點</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Select 
                 value={statusFilter} 
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -227,7 +227,7 @@ const AdminLocations = () => {
             <CardDescription>系統中的所有地點</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm">顯示</span>
                 <Select
@@ -242,12 +242,12 @@ const AdminLocations = () => {
                 </Select>
                 <span className="text-sm text-muted-foreground">每頁</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="搜尋名稱／地址..."
-                  className="h-9 px-3 border rounded-md w-64"
+                  className="h-9 px-3 border rounded-md w-full sm:w-64"
                 />
                 <Button variant="outline" size="sm" onClick={() => { setPage(1); fetchLocations() }}>搜尋</Button>
                 <Button variant="ghost" size="sm" onClick={() => { setSearch(''); setPage(1); fetchLocations() }}>清除</Button>

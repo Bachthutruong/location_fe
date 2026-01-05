@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
@@ -7,7 +8,7 @@ import { Label } from '../../components/ui/label'
 import { Textarea } from '../../components/ui/textarea'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Plus, Edit, Trash2, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface NewsCategory {
@@ -103,7 +104,7 @@ const AdminNewsCategories = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-2">新聞分類</h1>
           <p className="text-muted-foreground">建立、編輯、刪除新聞分類</p>
@@ -147,6 +148,12 @@ const AdminNewsCategories = () => {
                       <TableCell>{new Date(category.createdAt).toLocaleDateString('zh-TW')}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <Link to={`/admin/news?category=${category._id}`}>
+                            <Button variant="outline" size="sm">
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              查看文章
+                            </Button>
+                          </Link>
                           <Button variant="outline" size="sm" onClick={() => handleOpenDialog(category)}>
                             <Edit className="h-4 w-4 mr-2" />
                             編輯

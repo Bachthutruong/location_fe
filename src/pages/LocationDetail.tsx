@@ -167,8 +167,7 @@ const LocationDetail = () => {
                   {location.images.length > 0 && (
                     <div className={`grid gap-4 ${
                       location.images.length === 1 ? 'grid-cols-1' : 
-                      location.images.length === 2 ? 'grid-cols-2' : 
-                      'grid-cols-2'
+                      'grid-cols-1 md:grid-cols-2'
                     }`}>
                       {location.images.map((image, index) => (
                         <div key={index} className="overflow-hidden rounded-lg shadow-md">

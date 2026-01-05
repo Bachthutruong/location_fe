@@ -88,9 +88,9 @@ const AdminDeletedLocations = () => {
                     <TableRow key={location._id}>
                       <TableCell className="font-medium">{location.name}</TableCell>
                       <TableCell>{location.address}</TableCell>
-                      <TableCell>{location.category.name}</TableCell>
-                      <TableCell>{location.manager.name}</TableCell>
-                      <TableCell>{location.deletedBy.name}</TableCell>
+                      <TableCell>{location.category?.name || '未知分類'}</TableCell>
+                      <TableCell>{location.manager?.name || '未知管理者'}</TableCell>
+                      <TableCell>{location.deletedBy?.name || '未知使用者'}</TableCell>
                       <TableCell>
                         {new Date(location.deletedAt).toLocaleString('zh-TW')}
                       </TableCell>

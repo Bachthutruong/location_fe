@@ -71,15 +71,25 @@ interface LocationMapProps {
 }
 
 // Component to handle map updates when selectedLocation changes
-const MapController = ({ selectedLocation, resolvedLocations, suppressAutoFit }: { selectedLocation?: MapLocation | null; resolvedLocations: MapLocation[]; suppressAutoFit?: boolean }) => {
+// Component to handle map updates when selectedLocation changes
+const MapController = ({ selectedLocation, resolvedLocations, suppressAutoFit, focusActive, focusProvinceName, focusDistrictName }: { 
+  selectedLocation?: MapLocation | null; 
+  resolvedLocations: MapLocation[]; 
+  suppressAutoFit?: boolean; 
+  focusActive?: boolean;
+  focusProvinceName?: string;
+  focusDistrictName?: string;
+}) => {
   const map = useMap()
+  const prevLocationsLen = useRef(0)
   
   useEffect(() => {
-    // Invalidate map size to fix layout issues
+    // Invalidate map size on updates
     setTimeout(() => {
       map.invalidateSize()
     }, 100)
 
+    // 1. Priority: Focus on selected location
     if (selectedLocation) {
       console.log('[MapController] selectedLocation -> center to it')
       const target = resolvedLocations.find(l => l._id === selectedLocation._id)
@@ -91,22 +101,36 @@ const MapController = ({ selectedLocation, resolvedLocations, suppressAutoFit }:
       }
     }
 
-    if (suppressAutoFit) {
-      console.log('[MapController] suppressAutoFit is true, skip auto-fit')
-      // When a province/city/district focus is active, don't override it
+    // 2. If filtering is active (focusActive) or suppressed, DO NOT auto-fit the whole country
+    // yielding control to FocusProvince / FocusPlace
+    // This must come BEFORE any location count checks to prevent race conditions
+    // Also check for focusProvinceName/focusDistrictName directly to avoid race conditions
+    const hasActiveFilter = suppressAutoFit || focusActive || Boolean(focusProvinceName) || Boolean(focusDistrictName)
+    console.log('[MapController] suppressAutoFit=', suppressAutoFit, 'focusActive=', focusActive, 'focusProvinceName=', focusProvinceName, 'focusDistrictName=', focusDistrictName, 'hasActiveFilter=', hasActiveFilter, 'locations=', resolvedLocations.length)
+    if (hasActiveFilter) {
+      console.log('[MapController] filter active, skipping auto-fit')
+      // Update prevLocationsLen to current count to prevent auto-fit when filter changes
+      prevLocationsLen.current = resolvedLocations.filter(loc => loc.latitude && loc.longitude).length
       return
     }
 
+    // 3. Auto-fit logic for general view (only if locations changed significantly)
+    // Avoid resetting view if we just pan/zoomed and locations didn't change
     const validLocations = resolvedLocations.filter((loc) => loc.latitude && loc.longitude)
-    if (validLocations.length > 0) {
-      const bounds = L.latLngBounds(validLocations.map(loc => [loc.latitude!, loc.longitude!] as [number, number]))
-      console.log('[MapController] auto fit to all markers, count=', validLocations.length)
-      map.fitBounds(bounds, { padding: [50, 50] })
-    } else {
-      console.log('[MapController] no markers -> setView Taiwan default')
-      map.setView([25.0330, 121.5654], 8)
+    if (validLocations.length !== prevLocationsLen.current) {
+      prevLocationsLen.current = validLocations.length
+      
+      if (validLocations.length > 0) {
+        const bounds = L.latLngBounds(validLocations.map(loc => [loc.latitude!, loc.longitude!] as [number, number]))
+        console.log('[MapController] auto fit to all markers, count=', validLocations.length)
+        map.fitBounds(bounds, { padding: [50, 50] })
+      } else {
+        // Only reset to Taiwan default if absolutely no markers and no filters
+        console.log('[MapController] no markers -> setView Taiwan default')
+        map.setView([25.0330, 121.5654], 8)
+      }
     }
-  }, [selectedLocation, resolvedLocations, suppressAutoFit, map])
+  }, [selectedLocation, resolvedLocations, suppressAutoFit, focusActive, focusProvinceName, focusDistrictName, map])
   
   // Invalidate size on window resize
   useEffect(() => {
@@ -115,7 +139,6 @@ const MapController = ({ selectedLocation, resolvedLocations, suppressAutoFit }:
         map.invalidateSize()
       }, 100)
     }
-    
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [map])
@@ -290,7 +313,14 @@ const LocationMap: React.FC<LocationMapProps> = ({ locations, selectedLocation, 
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        <MapController selectedLocation={selectedLocation} resolvedLocations={resolvedLocations} suppressAutoFit={suppressAutoFit} />
+        <MapController 
+          selectedLocation={selectedLocation} 
+          resolvedLocations={resolvedLocations} 
+          suppressAutoFit={suppressAutoFit} 
+          focusActive={Boolean(focusProvinceName || focusCityName || focusDistrictName)}
+          focusProvinceName={focusProvinceName}
+          focusDistrictName={focusDistrictName}
+        />
 
         {/* Focus province when filter changes */}
         {focusProvinceName && (
@@ -427,9 +457,16 @@ export default LocationMap
 // Helper component to fit bounds to a province layer
 function FocusProvince({ name, getLayer }: { name: string; getLayer: (n: string) => any }) {
   const map = useMap()
+  const focusedRef = useRef(false)
+  
   useEffect(() => {
+    focusedRef.current = false
     let attempts = 0
+    const maxAttempts = 10 // Reduced from 20 for faster fallback
+    
     const tryFocus = () => {
+      if (focusedRef.current) return true
+      
       const layer = getLayer(name)
       if (!layer) {
         console.log('[FocusProvince] layer not found for', name, 'attempt', attempts)
@@ -441,6 +478,7 @@ function FocusProvince({ name, getLayer }: { name: string; getLayer: (n: string)
           map.invalidateSize()
           setTimeout(() => {
             map.fitBounds(b, { padding: [40, 40], maxZoom: 12 })
+            focusedRef.current = true
           }, 50)
           return true
         }
@@ -450,10 +488,10 @@ function FocusProvince({ name, getLayer }: { name: string; getLayer: (n: string)
     if (tryFocus()) return
     const interval = setInterval(() => {
       attempts += 1
-      if (tryFocus() || attempts >= 10) {
+      if (tryFocus() || attempts >= maxAttempts) {
         clearInterval(interval)
         // Fallback: geocode the province name if layer not found
-        if (attempts >= 10) {
+        if (attempts >= maxAttempts && !focusedRef.current) {
           const q = `${name}, Taiwan`
           console.log('[FocusProvince] fallback geocode', q)
           fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=tw&limit=1&addressdetails=1&namedetails=1&accept-language=zh-TW&q=${encodeURIComponent(q)}`, {
@@ -462,24 +500,30 @@ function FocusProvince({ name, getLayer }: { name: string; getLayer: (n: string)
             .then(r => r.ok ? r.json() : null)
             .then(data => {
               const item = data && data[0]
-              if (!item) return
+              if (!item || focusedRef.current) return
               if (item.boundingbox) {
                 const [south, north, west, east] = item.boundingbox.map((v: string) => parseFloat(v))
                 const bounds = L.latLngBounds([[south, west], [north, east]])
                 if (bounds.isValid()) {
                   console.log('[FocusProvince] fallback fitBounds for', name)
                   map.invalidateSize()
-                  setTimeout(() => map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 }), 50)
+                  setTimeout(() => {
+                    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 })
+                    focusedRef.current = true
+                  }, 50)
                 }
               } else if (item.lat && item.lon) {
                 map.invalidateSize()
-                setTimeout(() => map.setView([parseFloat(item.lat), parseFloat(item.lon)], 12), 50)
+                setTimeout(() => {
+                  map.setView([parseFloat(item.lat), parseFloat(item.lon)], 12)
+                  focusedRef.current = true
+                }, 50)
               }
             })
             .catch(() => {})
         }
       }
-    }, 200)
+    }, 100)
     return () => clearInterval(interval)
   }, [name, map, getLayer])
   return null

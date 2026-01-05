@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import api from '../../lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Select } from '../../components/ui/select'
 import { Badge } from '../../components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import { Plus, Edit, Trash2, Users } from 'lucide-react'
+import { Plus, Edit, Trash2, Users, Eye } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface News {
@@ -30,9 +30,10 @@ interface News {
 }
 
 const AdminNews = () => {
+  const [searchParams] = useSearchParams()
   const [news, setNews] = useState<News[]>([])
   const [loading, setLoading] = useState(true)
-  const [categoryFilter, setCategoryFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState(searchParams.get('category') || '')
   const [publishedFilter, setPublishedFilter] = useState('')
   const [page, setPage] = useState(1)
   const pageSize = 10
@@ -46,6 +47,14 @@ const AdminNews = () => {
     fetchNews()
     fetchCategories()
   }, [categoryFilter, publishedFilter, page, pageSize])
+
+  // Sync URL param changes to state
+  useEffect(() => {
+    const catParam = searchParams.get('category')
+    if (catParam) {
+      setCategoryFilter(catParam)
+    }
+  }, [searchParams])
 
   const fetchCategories = async () => {
     try {
@@ -103,7 +112,7 @@ const AdminNews = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-2">新聞管理</h1>
           <p className="text-muted-foreground">管理所有新聞文章</p>
@@ -224,6 +233,12 @@ const AdminNews = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Link to={`/news/${item._id}`}>
+                              <Button variant="outline" size="sm">
+                                <Eye className="h-4 w-4 mr-2" />
+                                查看
+                              </Button>
+                            </Link>
                             {item.isCourse && (
                               <Link to={`/admin/news/${item._id}/registrations`}>
                                 <Button variant="outline" size="sm">

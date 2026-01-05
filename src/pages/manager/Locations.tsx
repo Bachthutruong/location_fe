@@ -141,7 +141,7 @@ const ManagerLocations = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
             <div>
               <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 水里地方創生資料庫
@@ -163,7 +163,7 @@ const ManagerLocations = () => {
           <CardDescription>您建立的所有地點</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-2">
               <Label htmlFor="pageSize">顯示</Label>
               <Select
@@ -182,12 +182,12 @@ const ManagerLocations = () => {
               </Select>
               <span className="text-sm text-muted-foreground">每頁</span>
             </div>
-            <div className="flex-1 flex items-center justify-end gap-2">
+            <div className="flex-1 flex flex-wrap items-center md:justify-end gap-2 w-full">
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="搜尋名稱/地址..."
-                className="h-9 px-3 border rounded-md w-64"
+                className="h-9 px-3 border rounded-md w-full sm:w-64"
               />
               <Button variant="outline" size="sm" onClick={() => { setPage(1); fetchLocations() }}>搜尋</Button>
               <Button variant="ghost" size="sm" onClick={() => { setSearch(''); setPage(1); fetchLocations() }}>清除</Button>

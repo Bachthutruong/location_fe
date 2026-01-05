@@ -171,7 +171,7 @@ const Home = () => {
       }
     }
     loadDefaultSettings()
-  }, [urlParamsLoaded, searchParams, selectedProvince, selectedDistrict])
+  }, [urlParamsLoaded, searchParams]) // Removed selectedProvince/selectedDistrict to avoid loop
 
   // Fetch categories when province/district changes to update counts
   // Only fetch after default settings are loaded to avoid double fetch
@@ -319,9 +319,9 @@ const Home = () => {
   return (
     <div className="relative h-screen w-full overflow-hidden bg-[#e9eef6]">
       {/* Left Sidebar (Google Maps-like panel) */}
-      <div ref={sidebarRef} className={`absolute left-0 top-0 bottom-0 w-96 bg-white shadow-2xl z-[999] transition-transform duration-300 overflow-y-auto ${
+      <div ref={sidebarRef} className={`absolute left-0 top-0 bottom-0 w-full md:w-96 bg-white shadow-2xl z-[999] transition-transform duration-300 overflow-y-auto ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`} style={{ width: sidebarOpen ? '384px' : '0' }}>
+      }`} style={{ width: sidebarOpen ? undefined : '0' }}>
         {/* Sidebar Header: search & filters */}
         {!selectedLocation && (
           <div className="sticky top-0 z-10 bg-white">

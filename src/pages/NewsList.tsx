@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { Card, CardContent } from '../components/ui/card'
 import { Input } from '../components/ui/input'
@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { Search, Calendar, User, Newspaper } from 'lucide-react'
 
+// ... interfaces ...
 interface News {
   _id: string
   title: string
@@ -30,12 +31,14 @@ interface NewsCategory {
   name: string
 }
 
+
 const NewsList = () => {
+  const [searchParams] = useSearchParams()
   const [news, setNews] = useState<News[]>([])
   const [categories, setCategories] = useState<NewsCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const pageSize = 12
@@ -43,6 +46,14 @@ const NewsList = () => {
   useEffect(() => {
     fetchCategories()
   }, [])
+  
+  // Sync URL param changes to state
+  useEffect(() => {
+    const catParam = searchParams.get('category')
+    if (catParam) {
+      setSelectedCategory(catParam)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     fetchNews()

@@ -88,7 +88,7 @@ const CourseRegistrations = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-2">課程報名列表</h1>
           <p className="text-muted-foreground">
