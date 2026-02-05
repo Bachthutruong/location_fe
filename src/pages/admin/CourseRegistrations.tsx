@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import { Select } from '../../components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import { ArrowLeft, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Eye, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface CourseRegistration {
@@ -38,6 +38,7 @@ const CourseRegistrations = () => {
   const [total, setTotal] = useState(0)
   const [selectedRegistration, setSelectedRegistration] = useState<CourseRegistration | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -84,6 +85,70 @@ const CourseRegistrations = () => {
     }
   }
 
+  const handleExportExcel = async () => {
+    if (!id) return
+    try {
+      setExporting(true)
+      const response = await api.get(`/news/${id}/registrations/export`, {
+        responseType: 'blob'
+      })
+      const blob = response.data as Blob
+      if (blob.size === 0) {
+        toast.error('匯出檔案為空')
+        return
+      }
+      // Nếu server trả về JSON (lỗi) nhưng status 200, blob vẫn là blob
+      const contentType = response.headers['content-type'] || ''
+      if (contentType.includes('application/json')) {
+        const text = await blob.text()
+        const data = JSON.parse(text)
+        toast.error(data.message || '匯出失敗')
+        return
+      }
+      let fileName = `報名名單_${new Date().toISOString().slice(0, 10)}.xlsx`
+      const disposition = response.headers['content-disposition']
+      if (disposition) {
+        const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;\s]+)/i)
+        if (match?.[1]) {
+          try {
+            fileName = decodeURIComponent(match[1].trim().replace(/^["']|["']$/g, ''))
+          } catch {
+            // giữ fileName mặc định
+          }
+        } else {
+          const fallback = disposition.split('filename=')[1]?.trim()
+          if (fallback) fileName = fallback.replace(/^["']|["']$/g, '')
+        }
+      }
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fileName
+      a.rel = 'noopener noreferrer'
+      Object.assign(a.style, {
+        position: 'absolute',
+        left: '-9999px',
+        visibility: 'hidden'
+      })
+      document.body.appendChild(a)
+      a.click()
+      // Cho trình duyệt kịp bắt đầu tải trước khi thu hồi URL
+      setTimeout(() => {
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      }, 300)
+      toast.success('已匯出 Excel 檔案')
+    } catch (error: any) {
+      const msg =
+        error.response?.data instanceof Blob
+          ? '匯出 Excel 時發生錯誤'
+          : error.response?.data?.message || '匯出 Excel 時發生錯誤'
+      toast.error(msg)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const totalPages = Math.ceil(total / pageSize)
 
   return (
@@ -95,12 +160,22 @@ const CourseRegistrations = () => {
             {news ? `「${news.title}」的報名記錄` : '載入中...'}
           </p>
         </div>
-        <Link to="/admin/news">
-          <Button variant="outline">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            返回新聞列表
+        <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            onClick={handleExportExcel}
+            disabled={exporting || !id}
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            {exporting ? '匯出中...' : '匯出 Excel'}
           </Button>
-        </Link>
+          <Link to="/admin/news">
+            <Button variant="outline">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              返回新聞列表
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Card className="mb-6">
